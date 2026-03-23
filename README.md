@@ -32,7 +32,7 @@ cd backend
 
 2. Cài đặt dependencies:
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt --user
 ```
 
 3. Chạy server:
@@ -58,6 +58,9 @@ npm install
 ```bash
 npm start
 ```
+- Nếu không chỉnh được port 3000 kết nối vào 8000 thì: 
+  - "proxy": "http://localhost:8000"
+
 
 Frontend sẽ chạy tại `http://localhost:3000`
 
