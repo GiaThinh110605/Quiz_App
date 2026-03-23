@@ -1,7 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { useAuth } from './context/AuthContext';
+import LoginForm from './components/LoginForm';
+import RegisterForm from './components/RegisterForm';
 
 function App() {
+  const { user } = useAuth();
   const [questions, setQuestions] = useState([]);
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [answers, setAnswers] = useState({});
@@ -85,9 +90,9 @@ function App() {
     return 'poor';
   };
 
-  if (!quizStarted) {
-    return (
-      <div className="App">
+  const QuizComponent = () => {
+    if (!quizStarted) {
+      return (
         <div className="quiz-container">
           <h1>Ứng dụng Trắc nghiệm</h1>
           <p>Chào mừng bạn đến với bài trắc nghiệm!</p>
@@ -96,25 +101,23 @@ function App() {
             Bắt đầu làm bài
           </button>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (showResults && results) {
-    return (
-      <div className="App">
+    if (showResults && results) {
+      return (
         <div className="quiz-container">
           <h1>Kết quả bài thi</h1>
           <div className={`score-display ${getScoreClass(results.score)}`}>
             <h2>Điểm số: {results.score.toFixed(1)}/100</h2>
             <p>Số câu đúng: {results.correct_answers}/{results.total_questions}</p>
           </div>
-          
+
           <div className="results-container">
             <h2>Chi tiết kết quả</h2>
             {results.results.map((result) => (
-              <div 
-                key={result.question_id} 
+              <div
+                key={result.question_id}
                 className={`result-item ${result.is_correct ? 'correct' : 'incorrect'}`}
               >
                 <div className="result-question">
@@ -133,36 +136,32 @@ function App() {
               </div>
             ))}
           </div>
-          
+
           <button className="restart-button" onClick={startQuiz}>
             Làm lại bài thi
           </button>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (questions.length === 0) {
-    return (
-      <div className="App">
+    if (questions.length === 0) {
+      return (
         <div className="quiz-container">
           <h1>Đang tải câu hỏi...</h1>
         </div>
-      </div>
-    );
-  }
+      );
+    }
 
-  const question = questions[currentQuestion];
-  const selectedAnswer = answers[question.id];
+    const question = questions[currentQuestion];
+    const selectedAnswer = answers[question.id];
 
-  return (
-    <div className="App">
+    return (
       <div className="quiz-container">
         <h1>Ứng dụng Trắc nghiệm</h1>
         <div className="progress">
           <p>Câu {currentQuestion + 1}/{questions.length}</p>
         </div>
-        
+
         <div className="question-card">
           <div className="question-text">
             {question.question}
@@ -183,24 +182,24 @@ function App() {
 
         <div className="navigation">
           {currentQuestion > 0 && (
-            <button 
-              className="submit-button" 
+            <button
+              className="submit-button"
               onClick={prevQuestion}
             >
               Câu trước
             </button>
           )}
-          
+
           {currentQuestion < questions.length - 1 ? (
-            <button 
-              className="submit-button" 
+            <button
+              className="submit-button"
               onClick={nextQuestion}
             >
               Câu tiếp theo
             </button>
           ) : (
-            <button 
-              className="submit-button" 
+            <button
+              className="submit-button"
               onClick={handleSubmit}
               disabled={loading || Object.keys(answers).length === 0}
             >
@@ -209,6 +208,17 @@ function App() {
           )}
         </div>
       </div>
+    );
+  };
+
+  return (
+    <div className="App">
+      <Routes>
+        <Route path="/" element={user ? <Navigate to="/quiz" /> : <Navigate to="/login" />} />
+        <Route path="/login" element={user ? <Navigate to="/quiz" /> : <LoginForm />} />
+        <Route path="/register" element={user ? <Navigate to="/quiz" /> : <RegisterForm />} />
+        <Route path="/quiz" element={user ? <QuizComponent /> : <Navigate to="/login" />} />
+      </Routes>
     </div>
   );
 }
