@@ -46,7 +46,7 @@ class User(Base):
 import hashlib, secrets
 from datetime import datetime, timedelta
 from jose import jwt
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Form
 from sqlalchemy.orm import Session
 from database import SessionLocal
 from models.user import User
@@ -75,7 +75,7 @@ def create_token(username: str) -> str:
     return jwt.encode({"sub": username, "exp": expire}, SECRET_KEY, algorithm=ALGORITHM)
 
 @router.post("/register")
-def register(username: str, email: str, password: str, db: Session = Depends(get_db)):
+def register(username: str = Form(), email: str = Form(), password: str = Form(), db: Session = Depends(get_db)):
     if db.query(User).filter(User.username == username).first():
         raise HTTPException(status_code=400, detail="Username exists")
     user = User(username=username, email=email, password=hash_password(password))
@@ -84,7 +84,7 @@ def register(username: str, email: str, password: str, db: Session = Depends(get
     return {"message": "Registered successfully"}
 
 @router.post("/login")
-def login(username: str, password: str, db: Session = Depends(get_db)):
+def login(username: str = Form(), password: str = Form(), db: Session = Depends(get_db)):
     user = db.query(User).filter(User.username == username).first()
     if not user or not verify_password(password, user.password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
@@ -132,10 +132,11 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
 
   const login = async (credentials) => {
+    const params = new URLSearchParams(credentials);
     const res = await fetch('/auth/login', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(credentials)
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: params
     });
     const data = await res.json();
     if (data.access_token) {
@@ -143,7 +144,7 @@ export function AuthProvider({ children }) {
       setUser({ username: credentials.username });
       return { success: true };
     }
-    return { success: false, error: data.detail };
+    return { success: false, error: data.detail || 'Login failed' };
   };
 
   const register = async (userData) => {
@@ -155,7 +156,7 @@ export function AuthProvider({ children }) {
     });
     if (res.ok) return { success: true };
     const data = await res.json();
-    return { success: false, error: data.detail };
+    return { success: false, error: data.detail || 'Registration failed' };
   };
 
   const logout = () => {
@@ -189,7 +190,7 @@ export default function LoginForm() {
     e.preventDefault();
     const result = await login(form);
     if (result.success) navigate('/quiz');
-    else setError(result.error);
+    else setError(typeof result.error === 'string' ? result.error : 'Login failed');
   };
 
   return (
@@ -199,8 +200,11 @@ export default function LoginForm() {
       <form onSubmit={handleSubmit}>
         <input placeholder="Username" value={form.username}
           onChange={e => setForm({...form, username: e.target.value})} required />
+        <br />
         <input type="password" placeholder="Password" value={form.password}
           onChange={e => setForm({...form, password: e.target.value})} required />
+        <br />
+        <br />
         <button type="submit">Đăng nhập</button>
       </form>
       <p>Chưa có tài khoản? <Link to="/register">Đăng ký</Link></p>
@@ -225,7 +229,7 @@ export default function RegisterForm() {
     e.preventDefault();
     const result = await register(form);
     if (result.success) navigate('/login');
-    else setError(result.error);
+    else setError(typeof result.error === 'string' ? result.error : 'Registration failed');
   };
 
   return (
@@ -302,4 +306,70 @@ python main.py
 cd frontend
 npm install react-router-dom
 npm start
+```
+
+### 4. CSS Styling (Tùy chọn)
+
+Thêm vào `frontend/src/index.css` để style đẹp hơn:
+
+```css
+form input {
+  width: 350px;
+  height: 50px;
+  margin-top: 20px;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+button {
+  color: white;
+  background-color: #007bff;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 16px;
+  margin-top: 10px;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+.auth-container {
+  max-width: 400px;
+  margin: 50px auto;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  background-color: #f9f9f9;
+}
+
+.auth-container h2 {
+  text-align: center;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+.error {
+  color: red;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.auth-container p {
+  text-align: center;
+  margin-top: 15px;
+}
+
+.auth-container a {
+  color: #007bff;
+  text-decoration: none;
+}
+
+.auth-container a:hover {
+  text-decoration: underline;
+}
 ```
