@@ -1,18 +1,26 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from database import engine, Base
+from routers import auth
 from pydantic import BaseModel
 from typing import List
 
-app = FastAPI()
+# Create database tables
+Base.metadata.create_all(bind=engine)
+
+app = FastAPI(title="Quiz App API", version="1.0.0")
 
 # Enable CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include auth router
+app.include_router(auth.router)
 
 # Sample quiz data
 QUESTIONS = [
