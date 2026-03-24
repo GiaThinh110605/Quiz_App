@@ -9,12 +9,27 @@ function App() {
   const [results, setResults] = useState(null);
   const [quizStarted, setQuizStarted] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [questionsLoading, setQuestionsLoading] = useState(true);
+  const [questionsError, setQuestionsError] = useState(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes in seconds
   const [isTimeUp, setIsTimeUp] = useState(false);
 
   useEffect(() => {
     fetchQuestions();
   }, []);
+
+  // Add page reload warning
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (quizStarted && !showResults) {
+        e.preventDefault();
+        e.returnValue = 'Bạn có dữ liệu chưa được lưu. Bạn có chắc muốn rời đi?';
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [quizStarted, showResults]);
 
   useEffect(() => {
     let timer;
@@ -34,12 +49,20 @@ function App() {
   }, [quizStarted, showResults, timeLeft]);
 
   const fetchQuestions = async () => {
+    setQuestionsLoading(true);
+    setQuestionsError(null);
     try {
       const response = await fetch('/questions');
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
       const data = await response.json();
       setQuestions(data);
     } catch (error) {
       console.error('Error fetching questions:', error);
+      setQuestionsError('Không thể tải câu hỏi. Vui lòng làm mới trang.');
+    } finally {
+      setQuestionsLoading(false);
     }
   };
 
@@ -67,6 +90,25 @@ function App() {
   };
 
   const handleSubmit = async () => {
+    // Check if all questions are answered and show confirmation
+    const unansweredCount = questions.length - Object.keys(answers).length;
+    if (unansweredCount > 0 && !isTimeUp) {
+      const confirmSubmit = window.confirm(
+        `Bạn còn ${unansweredCount} câu chưa trả lời. Bạn có chắc muốn nộp bài không?`
+      );
+      if (!confirmSubmit) {
+        return;
+      }
+    } else if (!isTimeUp) {
+      // All questions answered, still ask for final confirmation
+      const confirmFinal = window.confirm(
+        'Bạn có chắc chắn muốn nộp bài? Sau khi nộp sẽ không thể thay đổi.'
+      );
+      if (!confirmFinal) {
+        return;
+      }
+    }
+
     setLoading(true);
     try {
       const submission = {
@@ -84,11 +126,16 @@ function App() {
         body: JSON.stringify(submission),
       });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
       setResults(result);
       setShowResults(true);
     } catch (error) {
       console.error('Error submitting quiz:', error);
+      alert('Lỗi khi nộp bài: ' + (error.message || 'Vui lòng thử lại sau.'));
     } finally {
       setLoading(false);
     }
@@ -111,6 +158,31 @@ function App() {
     if (score >= 60) return 'medium';
     return 'poor';
   };
+
+  if (questionsLoading) {
+    return (
+      <div className="App">
+        <div className="quiz-container">
+          <h1>Ứng dụng Trắc nghiệm</h1>
+          <div className="loading">⏳ Đang tải câu hỏi...</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (questionsError) {
+    return (
+      <div className="App">
+        <div className="quiz-container">
+          <h1>Ứng dụng Trắc nghiệm</h1>
+          <div className="error-message">
+            ❌ {questionsError}
+            <button onClick={fetchQuestions} className="retry-button">Thử lại</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!quizStarted) {
     return (
@@ -239,9 +311,9 @@ function App() {
             <button
               className="submit-button"
               onClick={handleSubmit}
-              disabled={loading || Object.keys(answers).length === 0 || isTimeUp}
+              disabled={loading || isTimeUp}
             >
-              {loading ? 'Đang nộp bài...' : isTimeUp ? 'Hết giờ' : 'Nộp bài'}
+              {loading ? 'Đang nộp bài...' : isTimeUp ? 'Hết giờ' : `Nộp bài (${Object.keys(answers).length}/${questions.length})`}
             </button>
           )}
         </div>
